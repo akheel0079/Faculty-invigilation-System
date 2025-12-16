@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Dashboard</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-people" style="font-size: 2rem; color: #0d6efd;"></i>
+                </div>
+                <div>
+                    <h3>{{ faculty_count }}</h3>
+                    <p class="mb-0">Available Faculty</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-building" style="font-size: 2rem; color: #198754;"></i>
+                </div>
+                <div>
+                    <h3>{{ hall_count }}</h3>
+                    <p class="mb-0">Available Halls</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-journal-text" style="font-size: 2rem; color: #6f42c1;"></i>
+                </div>
+                <div>
+                    <h3>{{ upcoming_exams }}</h3>
+                    <p class="mb-0">Upcoming Exams</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-calendar-check" style="font-size: 2rem; color: #fd7e14;"></i>
+                </div>
+                <div>
+                    <h3>{{ recent_allocations|length }}</h3>
+                    <p class="mb-0">Recent Allocations</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Recent Duty Allocations</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_allocations %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Session</th>
+                                <th>Exam Type</th>
+                                <th>Faculty</th>
+                                <th>Designation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for allocation in recent_allocations %}
+                            <tr>
+                                <td>{{ allocation['date'] }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'primary' if allocation['session'] == 'Forenoon' else 'info' }}">
+                                        {{ allocation['session'] }}
+                                    </span>
+                                </td>
+                                <td>{{ allocation['exam_type'] }}</td>
+                                <td>{{ allocation['faculty_name'] }}</td>
+                                <td>
+                                    <span class="badge bg-{% if allocation['designation'] == 'Professor' %}danger{% elif allocation['designation'] == 'Associate Professor' %}warning{% elif allocation['designation'] == 'Assistant Professor' %}info{% else %}secondary{% endif %}">
+                                        {{ allocation['designation'] }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-calendar-x" style="font-size: 2rem;"></i>
+                    <p class="mt-2">No recent allocations</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('exams') }}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Schedule New Exam
+                    </a>
+                    <a href="{{ url_for('faculty') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-people"></i> Manage Faculty
+                    </a>
+                    <a href="{{ url_for('halls') }}" class="btn btn-outline-success">
+                        <i class="bi bi-building"></i> Manage Halls
+                    </a>
+                    <a href="{{ url_for('schedule') }}" class="btn btn-outline-info">
+                        <i class="bi bi-calendar-event"></i> View Schedule
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5>System Overview</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <small class="text-muted">Professors</small>
+                        <h5>10 duties</h5>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted">Associate Professors</small>
+                        <h5>12 duties</h5>
+                    </div>
+                    <div class="col-6 mt-3">
+                        <small class="text-muted">Assistant Professors</small>
+                        <h5>15 duties</h5>
+                    </div>
+                    <div class="col-6 mt-3">
+                        <small class="text-muted">Lecturers</small>
+                        <h5>20 duties</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

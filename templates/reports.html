@@ -1,0 +1,491 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Reports & Analytics</h1>
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{{ url_for('export_schedule') }}" class="btn btn-success">
+            <i class="bi bi-download"></i> Export CSV
+        </a>
+        <button class="btn btn-info" data-bs-toggle="modal" data-bs-target="#filterModal">
+            <i class="bi bi-funnel"></i> Filter & Sort
+        </button>
+    </div>
+</div>
+
+<!-- Filter Modal -->
+<div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="filterModalLabel">Filter & Sort Reports</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="GET" action="{{ url_for('reports') }}">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Date Range</h6>
+                            <div class="mb-3">
+                                <label class="form-label">From Date</label>
+                                <input type="date" class="form-control" name="date_from" value="{{ filters.date_from }}">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">To Date</label>
+                                <input type="date" class="form-control" name="date_to" value="{{ filters.date_to }}">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Filters</h6>
+                            <div class="mb-3">
+                                <label class="form-label">Department</label>
+                                <select class="form-select" name="department">
+                                    <option value="">All Departments</option>
+                                    {% for dept in departments %}
+                                    <option value="{{ dept.department }}" {% if filters.department == dept.department %}selected{% endif %}>
+                                        {{ dept.department }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Exam Type</label>
+                                <select class="form-select" name="exam_type">
+                                    <option value="">All Exam Types</option>
+                                    <option value="Mid Term" {% if filters.exam_type == 'Mid Term' %}selected{% endif %}>Mid Term</option>
+                                    <option value="End Sem" {% if filters.exam_type == 'End Sem' %}selected{% endif %}>End Sem</option>
+                                    <option value="Missed Evaluation" {% if filters.exam_type == 'Missed Evaluation' %}selected{% endif %}>Missed Evaluation</option>
+                                    <option value="Supplementary Exam" {% if filters.exam_type == 'Supplementary Exam' %}selected{% endif %}>Supplementary Exam</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Sort Faculty By</h6>
+                            <div class="mb-3">
+                                <select class="form-select" name="sort_by">
+                                    <option value="name" {% if filters.sort_by == 'name' %}selected{% endif %}>Name</option>
+                                    <option value="department" {% if filters.sort_by == 'department' %}selected{% endif %}>Department</option>
+                                    <option value="designation" {% if filters.sort_by == 'designation' %}selected{% endif %}>Designation</option>
+                                    <option value="duties_completed" {% if filters.sort_by == 'duties_completed' %}selected{% endif %}>Duties Completed</option>
+                                    <option value="utilization" {% if filters.sort_by == 'utilization' %}selected{% endif %}>Utilization %</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Sort Order</h6>
+                            <div class="mb-3">
+                                <select class="form-select" name="sort_order">
+                                    <option value="asc" {% if filters.sort_order != 'desc' %}selected{% endif %}>Ascending</option>
+                                    <option value="desc" {% if filters.sort_order == 'desc' %}selected{% endif %}>Descending</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <a href="{{ url_for('reports') }}" class="btn btn-secondary">Clear All</a>
+                    <button type="submit" class="btn btn-primary">Apply Filters</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Active Filters -->
+{% if filters.date_from or filters.date_to or filters.department or filters.exam_type %}
+<div class="card mb-4">
+    <div class="card-header bg-light">
+        <h6 class="mb-0">
+            <i class="bi bi-funnel"></i> Active Filters
+            <small class="float-end">
+                <a href="{{ url_for('reports') }}" class="btn btn-sm btn-outline-danger">Clear All</a>
+            </small>
+        </h6>
+    </div>
+    <div class="card-body">
+        <div class="d-flex flex-wrap gap-2">
+            {% if filters.date_from %}
+            <span class="badge bg-info">From: {{ filters.date_from }}</span>
+            {% endif %}
+            {% if filters.date_to %}
+            <span class="badge bg-info">To: {{ filters.date_to }}</span>
+            {% endif %}
+            {% if filters.department %}
+            <span class="badge bg-warning">Department: {{ filters.department }}</span>
+            {% endif %}
+            {% if filters.exam_type %}
+            <span class="badge bg-success">Exam Type: {{ filters.exam_type }}</span>
+            {% endif %}
+            {% if filters.sort_by %}
+            <span class="badge bg-primary">Sorted by: {{ filters.sort_by|replace('_', ' ')|title }}</span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4>{{ faculty_workload|length }}</h4>
+                        <p class="mb-0">Total Faculty</p>
+                    </div>
+                    <i class="bi bi-people" style="font-size: 2rem;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4>{{ exam_assignments|length }}</h4>
+                        <p class="mb-0">Total Exams</p>
+                    </div>
+                    <i class="bi bi-journal-text" style="font-size: 2rem;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-warning">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        {% set total_students = exam_assignments|sum(attribute='students_count') %}
+                        <h4>{{ total_students }}</h4>
+                        <p class="mb-0">Total Students</p>
+                    </div>
+                    <i class="bi bi-person-check" style="font-size: 2rem;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        {% set total_assignments = faculty_workload|sum(attribute='exams_assigned') %}
+                        <h4>{{ total_assignments }}</h4>
+                        <p class="mb-0">Total Assignments</p>
+                    </div>
+                    <i class="bi bi-calendar-check" style="font-size: 2rem;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Faculty Workload Report -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="bi bi-person-lines-fill"></i> Faculty Workload Report</h5>
+                <span class="badge bg-primary">{{ faculty_workload|length }} faculty</span>
+            </div>
+            <div class="card-body">
+                {% if faculty_workload %}
+                <div class="table-responsive" style="max-height: 400px;">
+                    <table class="table table-striped table-hover">
+                        <thead class="sticky-top">
+                            <tr>
+                                <th>Faculty Name</th>
+                                <th>Dept</th>
+                                <th>Completed</th>
+                                <th>Utilization</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for faculty in faculty_workload %}
+                            <tr>
+                                <td>
+                                    <strong>{{ faculty['name'] }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ faculty['designation'] }}</small>
+                                </td>
+                                <td>{{ faculty['department'] }}</td>
+                                <td>
+                                    <span class="badge bg-success">{{ faculty['duties_completed'] }}/{{ faculty['total_duties'] }}</span>
+                                </td>
+                                <td>
+                                    {% set utilization = (faculty['duties_completed'] / faculty['total_duties'] * 100) | round(1) if faculty['total_duties'] > 0 else 0 %}
+                                    <div class="progress" style="height: 8px; width: 100px;">
+                                        <div class="progress-bar bg-{% if utilization >= 80 %}success{% elif utilization >= 50 %}warning{% else %}danger{% endif %}" 
+                                             style="width: {{ utilization }}%"></div>
+                                    </div>
+                                    <small>{{ utilization }}%</small>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state text-center py-4">
+                    <i class="bi bi-file-text" style="font-size: 2rem;"></i>
+                    <h4>No faculty workload data</h4>
+                    <p>No faculty workload data available for the selected filters.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Department Statistics -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-building"></i> Department Statistics</h5>
+            </div>
+            <div class="card-body">
+                {% if dept_stats %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Department</th>
+                                <th>Faculty</th>
+                                <th>Completed Duties</th>
+                                <th>Utilization</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for dept in dept_stats %}
+                            <tr>
+                                <td><strong>{{ dept['department'] }}</strong></td>
+                                <td>{{ dept['faculty_count'] }}</td>
+                                <td>{{ dept['completed_duties'] or 0 }}/{{ dept['total_duties'] or 0 }}</td>
+                                <td>
+                                    <span class="badge bg-{% if dept['avg_utilization'] >= 80 %}success{% elif dept['avg_utilization'] >= 50 %}warning{% else %}danger{% endif %}">
+                                        {{ dept['avg_utilization'] or 0 }}%
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state text-center py-4">
+                    <i class="bi bi-building" style="font-size: 2rem;"></i>
+                    <h4>No department data</h4>
+                    <p>No department statistics available.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Exam Assignments Report -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="bi bi-journal-check"></i> Exam Assignments Report</h5>
+                <span class="badge bg-primary">{{ exam_assignments|length }} exams</span>
+            </div>
+            <div class="card-body">
+                {% if exam_assignments %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Exam Type</th>
+                                <th>Date</th>
+                                <th>Session</th>
+                                <th>Course</th>
+                                <th>Students</th>
+                                <th>Faculty</th>
+                                <th>Halls</th>
+                                <th>Capacity</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for exam in exam_assignments %}
+                            <tr>
+                                <td>
+                                    <span class="badge bg-{% if exam['exam_type'] == 'End Sem' %}danger{% elif exam['exam_type'] == 'Mid Term' %}primary{% else %}warning{% endif %}">
+                                        {{ exam['exam_type'] }}
+                                    </span>
+                                </td>
+                                <td>{{ exam['date'] }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'primary' if exam['session'] == 'Forenoon' else 'info' }}">
+                                        {{ exam['session'] }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if exam['course_code'] %}
+                                        <strong>{{ exam['course_code'] }}</strong>
+                                        {% if exam['course_name'] %}
+                                            <br><small class="text-muted">{{ exam['course_name'] }}</small>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ exam['students_count'] }}</td>
+                                <td>
+                                    <span class="badge bg-{% if exam['faculty_assigned'] >= exam['invigilators_required'] %}success{% else %}warning{% endif %}">
+                                        {{ exam['faculty_assigned'] }}/{{ exam['invigilators_required'] }}
+                                    </span>
+                                </td>
+                                <td>{{ exam['halls_assigned'] or 0 }}</td>
+                                <td>
+                                    {% if exam['total_hall_capacity'] %}
+                                        <span class="badge bg-{% if exam['total_hall_capacity'] >= exam['students_count'] %}success{% else %}warning{% endif %}">
+                                            {{ exam['total_hall_capacity'] }}/{{ exam['students_count'] }}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-danger">0/{{ exam['students_count'] }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if exam['faculty_assigned'] >= exam['invigilators_required'] and exam['total_hall_capacity'] and exam['total_hall_capacity'] >= exam['students_count'] %}
+                                    <span class="badge bg-success">Complete</span>
+                                    {% else %}
+                                    <span class="badge bg-warning">Pending</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state text-center py-4">
+                    <i class="bi bi-file-text" style="font-size: 2rem;"></i>
+                    <h4>No exam assignment data</h4>
+                    <p>No exam assignment data available for the selected filters.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hall Utilization & Monthly Stats -->
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-building"></i> Hall Utilization</h5>
+            </div>
+            <div class="card-body">
+                {% if hall_stats %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Hall Name</th>
+                                <th>Capacity</th>
+                                <th>Total Exams</th>
+                                <th>Upcoming</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for hall in hall_stats %}
+                            <tr>
+                                <td><strong>{{ hall['hall_name'] }}</strong></td>
+                                <td>{{ hall['capacity'] }}</td>
+                                <td>{{ hall['total_exams'] }}</td>
+                                <td>
+                                    <span class="badge bg-{% if hall['upcoming_exams'] > 0 %}success{% else %}secondary{% endif %}">
+                                        {{ hall['upcoming_exams'] }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state text-center py-4">
+                    <i class="bi bi-building" style="font-size: 2rem;"></i>
+                    <h4>No hall data</h4>
+                    <p>No hall utilization data available.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-calendar-month"></i> Monthly Statistics (Last 6 Months)</h5>
+            </div>
+            <div class="card-body">
+                {% if monthly_stats %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Month</th>
+                                <th>Exams</th>
+                                <th>Assignments</th>
+                                <th>Students</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for month in monthly_stats %}
+                            <tr>
+                                <td><strong>{{ month['month'] }}</strong></td>
+                                <td>{{ month['exam_count'] }}</td>
+                                <td>{{ month['assignment_count'] }}</td>
+                                <td>{{ month['total_students'] or 0 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state text-center py-4">
+                    <i class="bi bi-calendar" style="font-size: 2rem;"></i>
+                    <h4>No monthly data</h4>
+                    <p>No monthly statistics available.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.sticky-top {
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 100;
+}
+.empty-state {
+    color: #6c757d;
+}
+.table-responsive {
+    border-radius: 8px;
+}
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    margin-bottom: 1.5rem;
+}
+.badge {
+    font-size: 0.75em;
+}
+.progress {
+    background-color: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+}
+</style>
+{% endblock %}

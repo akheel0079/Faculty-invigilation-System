@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Examination Halls</h1>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addHallModal">
+        <i class="bi bi-plus-circle"></i> Add Hall
+    </button>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Hall List</h5>
+            </div>
+            <div class="card-body">
+                {% if halls %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Hall Name</th>
+                                <th>Capacity</th>
+                                <th>Status</th>
+                                <th>Current Usage</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for hall in halls %}
+                            <tr>
+                                <td>
+                                    <strong>{{ hall['hall_name'] }}</strong>
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary">{{ hall['capacity'] }} students</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if hall['is_available'] else 'danger' }}">
+                                        {{ 'Available' if hall['is_available'] else 'Unavailable' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if hall['upcoming_exams'] %}
+                                    <small>
+                                        {{ hall['upcoming_exams'] }} upcoming exam(s)
+                                    </small>
+                                    {% else %}
+                                    <span class="text-muted">No upcoming exams</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('toggle_hall', hall_id=hall['hall_id']) }}" 
+                                       class="btn btn-sm btn-{{ 'danger' if hall['is_available'] else 'success' }}">
+                                        {{ 'Make Unavailable' if hall['is_available'] else 'Make Available' }}
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-building" style="font-size: 3rem;"></i>
+                    <h4>No Examination Halls</h4>
+                    <p>Add examination halls to get started.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Capacity Summary -->
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Hall Capacity Summary</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <h5>Small Halls</h5>
+                            <h3>
+                                {% set small_halls = [] %}
+                                {% for hall in halls if hall.capacity <= 50 %}
+                                    {% set _ = small_halls.append(hall.capacity) %}
+                                {% endfor %}
+                                {{ small_halls | length }}
+                            </h3>
+                            <p>≤ 50 capacity</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <h5>Medium Halls</h5>
+                            <h3>
+                                {% set medium_halls = [] %}
+                                {% for hall in halls if hall.capacity > 50 and hall.capacity <= 100 %}
+                                    {% set _ = medium_halls.append(hall.capacity) %}
+                                {% endfor %}
+                                {{ medium_halls | length }}
+                            </h3>
+                            <p>51-100 capacity</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <h5>Large Halls</h5>
+                            <h3>
+                                {% set large_halls = [] %}
+                                {% for hall in halls if hall.capacity > 100 and hall.capacity <= 200 %}
+                                    {% set _ = large_halls.append(hall.capacity) %}
+                                {% endfor %}
+                                {{ large_halls | length }}
+                            </h3>
+                            <p>101-200 capacity</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <h5>Auditoriums</h5>
+                            <h3>
+                                {% set auditoriums = [] %}
+                                {% for hall in halls if hall.capacity > 200 %}
+                                    {% set _ = auditoriums.append(hall.capacity) %}
+                                {% endfor %}
+                                {{ auditoriums | length }}
+                            </h3>
+                            <p>200+ capacity</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Hall Modal -->
+<div class="modal fade" id="addHallModal" tabindex="-1" aria-labelledby="addHallModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addHallModalLabel">Add Examination Hall</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('add_hall') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Hall Name</label>
+                        <input type="text" class="form-control" name="hall_name" required placeholder="Room 101, Main Hall, etc.">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Capacity</label>
+                        <input type="number" class="form-control" name="capacity" required min="1" placeholder="Number of students">
+                        <div class="form-text">Maximum number of students that can be accommodated</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Hall</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

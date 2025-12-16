@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5><i class="bi bi-person-check"></i> Assign Invigilators for Exam</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h6>Exam Details:</h6>
+                        <div class="card">
+                            <div class="card-body">
+                                <table class="table table-sm table-borderless">
+                                    <tr>
+                                        <th width="40%">Type:</th>
+                                        <td>
+                                            <span class="badge bg-{% if exam['exam_type'] == 'End Sem' %}danger{% elif exam['exam_type'] == 'Mid Term' %}primary{% else %}warning{% endif %}">
+                                                {{ exam['exam_type'] }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>Date:</th>
+                                        <td>{{ exam['date'] }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Session:</th>
+                                        <td>
+                                            <span class="badge bg-{{ 'primary' if exam['session'] == 'Forenoon' else 'info' }}">
+                                                {{ exam['session'] }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>Students:</th>
+                                        <td>{{ exam['students_count'] }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Invigilators Required:</th>
+                                        <td><strong>{{ exam['invigilators_required'] }}</strong></td>
+                                    </tr>
+                                    {% if exam['course_code'] %}
+                                    <tr>
+                                        <th>Course:</th>
+                                        <td>{{ exam['course_code'] }} - {{ exam['course_name'] }}</td>
+                                    </tr>
+                                    {% endif %}
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Hall Allocation Status:</h6>
+                        <div class="card">
+                            <div class="card-body">
+                                {% if exam['assigned_halls'] and exam['assigned_halls'] > 0 %}
+                                <div class="alert alert-success">
+                                    <i class="bi bi-check-circle"></i> 
+                                    <strong>{{ exam['assigned_halls'] }} hall(s) assigned</strong>
+                                    <br>
+                                    <strong>Total Capacity:</strong> {{ exam['total_hall_capacity'] or 0 }} students
+                                    <br>
+                                    <strong>Required:</strong> {{ exam['students_count'] }} students
+                                    {% if exam['total_hall_capacity'] and exam['total_hall_capacity'] >= exam['students_count'] %}
+                                    <br>
+                                    <span class="badge bg-success">✅ Capacity Satisfied</span>
+                                    {% else %}
+                                    <br>
+                                    <span class="badge bg-warning">⚠️ Insufficient Capacity</span>
+                                    {% endif %}
+                                </div>
+                                <a href="{{ url_for('assign_halls', exam_id=exam['exam_id']) }}" class="btn btn-sm btn-info">
+                                    <i class="bi bi-building"></i> Manage Halls
+                                </a>
+                                {% else %}
+                                <div class="alert alert-warning">
+                                    <i class="bi bi-exclamation-triangle"></i> 
+                                    No halls assigned yet. Please assign halls first to ensure proper invigilation.
+                                </div>
+                                <a href="{{ url_for('assign_halls', exam_id=exam['exam_id']) }}" class="btn btn-sm btn-warning">
+                                    <i class="bi bi-building"></i> Assign Halls First
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <form method="POST" action="{{ url_for('make_assignment') }}">
+                    <input type="hidden" name="exam_id" value="{{ exam['exam_id'] }}">
+                    
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="card">
+                                <div class="card-header bg-info text-white">
+                                    <h6>
+                                        <i class="bi bi-people"></i> 
+                                        Select Faculty Members 
+                                        <small class="float-end">Required: {{ exam['invigilators_required'] }} faculty members</small>
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    {% if faculty %}
+                                    <div class="alert alert-info">
+                                        <i class="bi bi-info-circle"></i>
+                                        Select exactly {{ exam['invigilators_required'] }} faculty members for invigilation duty.
+                                        The system automatically calculates required invigilators based on student count and exam type.
+                                    </div>
+                                    
+                                    <div class="table-responsive">
+                                        <table class="table table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th width="5%">Select</th>
+                                                    <th width="25%">Name</th>
+                                                    <th width="20%">Designation</th>
+                                                    <th width="20%">Department</th>
+                                                    <th width="15%">Remaining Duties</th>
+                                                    <th width="15%">Availability</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for fac in faculty %}
+                                                <tr>
+                                                    <td>
+                                                        <input class="form-check-input faculty-checkbox" type="checkbox" 
+                                                               name="faculty_ids" value="{{ fac['faculty_id'] }}" 
+                                                               id="fac{{ fac['faculty_id'] }}">
+                                                    </td>
+                                                    <td>
+                                                        <strong>{{ fac['name'] }}</strong>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-{% if fac['designation'] == 'Professor' %}danger{% elif fac['designation'] == 'Associate Professor' %}warning{% elif fac['designation'] == 'Assistant Professor' %}info{% else %}secondary{% endif %}">
+                                                            {{ fac['designation'] }}
+                                                        </span>
+                                                    </td>
+                                                    <td>{{ fac['department'] }}</td>
+                                                    <td>
+                                                        <span class="badge bg-{% if fac['remaining_duties'] > 5 %}success{% elif fac['remaining_duties'] > 0 %}warning{% else %}danger{% endif %}">
+                                                            {{ fac['remaining_duties'] }}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-{{ 'success' if fac['is_available'] else 'danger' }}">
+                                                            {{ 'Available' if fac['is_available'] else 'Unavailable' }}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {% else %}
+                                    <div class="alert alert-warning text-center">
+                                        <i class="bi bi-exclamation-triangle" style="font-size: 2rem;"></i>
+                                        <h5 class="mt-2">No available faculty</h5>
+                                        <p class="mb-0">All faculty members are either unavailable, have no remaining duties, or are already assigned to other exams during this session.</p>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-success" {% if not faculty %}disabled{% endif %}>
+                            <i class="bi bi-check-circle"></i> Assign Selected Faculty
+                        </button>
+                        <a href="{{ url_for('exams') }}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Back to Exams
+                        </a>
+                        <a href="{{ url_for('assign_halls', exam_id=exam['exam_id']) }}" class="btn btn-info">
+                            <i class="bi bi-arrow-left"></i> Back to Halls
+                        </a>
+                        <span class="ms-2 text-muted" id="selection-count">0 selected</span>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('.faculty-checkbox');
+    const submitBtn = document.querySelector('button[type="submit"]');
+    const selectionCount = document.getElementById('selection-count');
+    const requiredCount = {{ exam['invigilators_required'] }};
+    
+    function updateSelection() {
+        const checked = Array.from(checkboxes).filter(cb => cb.checked);
+        const count = checked.length;
+        
+        selectionCount.textContent = `${count} selected (Required: ${requiredCount})`;
+        
+        if (count === requiredCount) {
+            selectionCount.className = 'ms-2 text-success';
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-check-circle"></i> Assign Selected Faculty';
+        } else if (count > requiredCount) {
+            selectionCount.className = 'ms-2 text-danger';
+            selectionCount.textContent = `${count} selected (Required: ${requiredCount}) - Too many selected!`;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="bi bi-x-circle"></i> Too Many Selected';
+        } else {
+            selectionCount.className = 'ms-2 text-warning';
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-check-circle"></i> Assign Selected Faculty';
+        }
+    }
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateSelection);
+    });
+ 
+    updateSelection();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5><i class="bi bi-building"></i> Assign Halls for Exam</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h6>Exam Details:</h6>
+                        <div class="card">
+                            <div class="card-body">
+                                <table class="table table-sm table-borderless">
+                                    <tr>
+                                        <th width="40%">Type:</th>
+                                        <td>
+                                            <span class="badge bg-{% if exam['exam_type'] == 'End Sem' %}danger{% elif exam['exam_type'] == 'Mid Term' %}primary{% else %}warning{% endif %}">
+                                                {{ exam['exam_type'] }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>Date:</th>
+                                        <td>{{ exam['date'] }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Session:</th>
+                                        <td>
+                                            <span class="badge bg-{{ 'primary' if exam['session'] == 'Forenoon' else 'info' }}">
+                                                {{ exam['session'] }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>Students:</th>
+                                        <td><strong>{{ exam['students_count'] }}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <th>Required Capacity:</th>
+                                        <td><strong>{{ exam['students_count'] }} students</strong></td>
+                                    </tr>
+                                    {% if exam['course_code'] %}
+                                    <tr>
+                                        <th>Course:</th>
+                                        <td>{{ exam['course_code'] }} - {{ exam['course_name'] }}</td>
+                                    </tr>
+                                    {% endif %}
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Hall Allocation Status:</h6>
+                        {% if assigned_halls %}
+                        <div class="card">
+                            <div class="card-body">
+                                {% set total_capacity = 0 %}
+                                {% for hall in assigned_halls %}
+                                <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+                                    <div>
+                                        <strong>{{ hall['hall_name'] }}</strong>
+                                        <br>
+                                        <small class="text-muted">Capacity: {{ hall['capacity'] }} students</small>
+                                    </div>
+                                    <a href="{{ url_for('remove_hall_assignment', exam_id=exam['exam_id'], hall_id=hall['hall_id']) }}" 
+                                       class="btn btn-sm btn-danger" 
+                                       onclick="return confirm('Remove {{ hall.hall_name }} from this exam?')">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                                {% set total_capacity = total_capacity + hall['capacity'] %}
+                                {% endfor %}
+                                
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle"></i> No halls assigned yet.
+                            <br>
+                            <strong>Required Capacity:</strong> {{ exam['students_count'] }} students
+                        </div>
+                        {% endif %}
+                        
+                        {% if available_halls %}
+                        <div class="mt-3">
+                            <a href="{{ url_for('auto_assign_halls', exam_id=exam['exam_id']) }}" 
+                               class="btn btn-success w-100" 
+                               onclick="return confirm('Auto-assign halls based on capacity requirement? This will assign available halls until capacity requirement is satisfied.')">
+                                <i class="bi bi-magic"></i> Auto-Assign Halls
+                            </a>
+                            <small class="text-muted d-block mt-1">System will automatically select halls until capacity requirement is satisfied</small>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <form method="POST" action="{{ url_for('make_hall_assignment') }}">
+                    <input type="hidden" name="exam_id" value="{{ exam['exam_id'] }}">
+                    
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="card">
+                                <div class="card-header bg-info text-white">
+                                    <h6>
+                                        <i class="bi bi-list-check"></i> 
+                                        Select Available Halls 
+                                        <small class="float-end">Required Capacity: {{ exam['students_count'] }} students</small>
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    {% if available_halls %}
+                                    <div class="alert alert-info">
+                                        <i class="bi bi-info-circle"></i>
+                                        Select halls until the total capacity meets or exceeds {{ exam['students_count'] }} students.
+                                        The system will show the cumulative capacity as you select halls.
+                                    </div>
+                                    
+                                    <div class="table-responsive">
+                                        <table class="table table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th width="5%">Select</th>
+                                                    <th width="25%">Hall Name</th>
+                                                    <th width="15%">Capacity</th>
+                                                    <th width="15%">Status</th>
+                                                    <th width="40%">Availability</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for hall in available_halls %}
+                                                <tr>
+                                                    <td>
+                                                        <input class="form-check-input hall-checkbox" type="checkbox" 
+                                                               name="hall_ids" value="{{ hall['hall_id'] }}" 
+                                                               id="hall{{ hall['hall_id'] }}"
+                                                               {% if hall['already_assigned'] or hall['conflict'] %}disabled{% endif %}
+                                                               {% if hall['already_assigned'] %}checked{% endif %}>
+                                                    </td>
+                                                    <td>
+                                                        <strong>{{ hall['hall_name'] }}</strong>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-primary">{{ hall['capacity'] }} students</span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-{{ 'success' if hall['is_available'] else 'danger' }}">
+                                                            {{ 'Available' if hall['is_available'] else 'Unavailable' }}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        {% if hall['already_assigned'] %}
+                                                        <span class="badge bg-success">
+                                                            <i class="bi bi-check-circle"></i> Already assigned to this exam
+                                                        </span>
+                                                        {% elif hall['conflict'] %}
+                                                        <span class="badge bg-danger">
+                                                            <i class="bi bi-x-circle"></i> {{ hall['conflict'] }}
+                                                        </span>
+                                                        {% else %}
+                                                        <span class="badge bg-success">
+                                                            <i class="bi bi-check-circle"></i> Available for assignment
+                                                        </span>
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {% else %}
+                                    <div class="alert alert-warning text-center">
+                                        <i class="bi bi-exclamation-triangle" style="font-size: 2rem;"></i>
+                                        <h5 class="mt-2">No available halls</h5>
+                                        <p class="mb-0">All halls are either unavailable or already allocated to other exams during this session.</p>
+                                        <a href="{{ url_for('halls') }}" class="btn btn-primary mt-3">
+                                            <i class="bi bi-building"></i> Manage Halls
+                                        </a>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-success" id="assign-btn">
+                            <i class="bi bi-check-circle"></i> Assign Selected Halls
+                        </button>
+                        <a href="{{ url_for('exams') }}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Back to Exams
+                        </a>
+                        {% if assigned_halls %}
+                            {% set total_capacity = assigned_halls | sum(attribute='capacity') %}
+                            {% if total_capacity >= exam['students_count'] %}
+                            <a href="{{ url_for('assign_invigilators', exam_id=exam['exam_id']) }}" class="btn btn-primary">
+                                <i class="bi bi-arrow-right"></i> Assign Faculty Next
+                            </a>
+                            {% else %}
+                            <button type="button" class="btn btn-outline-primary" disabled title="Complete hall assignment first">
+                                <i class="bi bi-arrow-right"></i> Assign Faculty Next
+                            </button>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('.hall-checkbox');
+    const assignBtn = document.getElementById('assign-btn');
+    
+    // Enable the assign button by default since we removed the selection summary
+    assignBtn.disabled = false;
+    
+    // Add form submission confirmation for insufficient capacity
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        let totalCapacity = 0;
+        
+        checkboxes.forEach(checkbox => {
+            if (checkbox.checked) {
+                const row = checkbox.closest('tr');
+                const capacityBadge = row.querySelector('.badge.bg-primary');
+                if (capacityBadge) {
+                    const capacityText = capacityBadge.textContent;
+                    const capacity = parseInt(capacityText);
+                    if (!isNaN(capacity)) {
+                        totalCapacity += capacity;
+                    }
+                }
+            }
+        });
+        
+        const requiredCapacity = {{ exam['students_count'] }};
+        
+        if (totalCapacity < requiredCapacity) {
+            const confirmSubmit = confirm(
+                `Warning: Selected capacity (${totalCapacity}) is less than required (${requiredCapacity}).\n\nDo you want to continue anyway?`
+            );
+            if (!confirmSubmit) {
+                e.preventDefault();
+            }
+        }
+    });
+});
+</script>
+
+<style>
+.hall-checkbox:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.hall-checkbox:disabled:checked {
+    background-color: #6c757d;
+    border-color: #6c757d;
+}
+
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.card-header {
+    font-weight: 600;
+}
+
+.badge {
+    font-size: 0.75em;
+    font-weight: 500;
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    background-color: #f8f9fa;
+}
+
+.alert {
+    border: none;
+    border-radius: 8px;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #6c757d;
+}
+
+.btn-group-sm > .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+    
+    .btn-group-sm > .btn {
+        padding: 0.2rem 0.4rem;
+        font-size: 0.7rem;
+    }
+}
+</style>
+{% endblock %}

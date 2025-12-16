@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Exam Management</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Schedule New Exam</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('add_exam') }}">
+                    <div class="mb-3">
+                        <label class="form-label">Exam Type</label>
+                        <select class="form-select" name="exam_type" required>
+                            <option value="">Select Exam Type</option>
+                            <option value="Mid Term">Mid Term</option>
+                            <option value="Missed Evaluation">Missed Evaluation</option>
+                            <option value="End Sem">End Sem</option>
+                            <option value="Supplementary Exam">Supplementary Exam</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Date</label>
+                        <input type="date" class="form-control" name="date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Session</label>
+                        <select class="form-select" name="session" required>
+                            <option value="">Select Session</option>
+                            <option value="Forenoon">Forenoon</option>
+                            <option value="Afternoon">Afternoon</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Number of Students</label>
+                        <input type="number" class="form-control" name="students_count" required min="1" placeholder="Total students appearing for exam">
+                        <div class="form-text">System will automatically assign halls based on this capacity</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Course Code (optional)</label>
+                        <input type="text" class="form-control" name="course_code" placeholder="CS101">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Course Name (optional)</label>
+                        <input type="text" class="form-control" name="course_name" placeholder="Introduction to Programming">
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-calendar-plus"></i> Schedule Exam
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Scheduled Exams</h5>
+            </div>
+            <div class="card-body">
+                {% if exams %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Date</th>
+                                <th>Session</th>
+                                <th>Students</th>
+                                <th>Course</th>
+                                <th>Invigilators</th>
+                                <th>Halls</th>
+                                <th>Capacity</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for exam in exams %}
+                            <tr>
+                                <td>
+                                    <span class="badge bg-{% if exam['exam_type'] == 'End Sem' %}danger{% elif exam['exam_type'] == 'Mid Term' %}primary{% else %}warning{% endif %}">
+                                        {{ exam['exam_type'] }}
+                                    </span>
+                                </td>
+                                <td>{{ exam['date'] }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'primary' if exam['session'] == 'Forenoon' else 'info' }}">
+                                        {{ exam['session'] }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ exam['students_count'] }}</span>
+                                </td>
+                                <td>
+                                    {% if exam['course_code'] %}
+                                        <strong>{{ exam['course_code'] }}</strong>
+                                        {% if exam['course_name'] %}
+                                            <br><small class="text-muted">{{ exam['course_name'] }}</small>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-{% if exam['assigned_invigilators'] >= exam['invigilators_required'] %}success{% else %}warning{% endif %}">
+                                        {{ exam['assigned_invigilators'] }}/{{ exam['invigilators_required'] }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{% if exam['assigned_halls'] > 0 %}success{% else %}warning{% endif %}">
+                                        {{ exam['assigned_halls'] or 0 }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if exam['total_hall_capacity'] %}
+                                        <span class="badge bg-{% if exam['total_hall_capacity'] >= exam['students_count'] %}success{% else %}warning{% endif %}">
+                                            {{ exam['total_hall_capacity'] }}/{{ exam['students_count'] }}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-danger">0/{{ exam['students_count'] }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        {% if exam['assigned_halls'] and exam['assigned_halls'] > 0 %}
+                                        <a href="{{ url_for('assign_invigilators', exam_id=exam['exam_id']) }}" 
+                                           class="btn btn-primary" title="Assign Faculty">
+                                            <i class="bi bi-person-check"></i>
+                                        </a>
+                                        {% endif %}
+                                        <a href="{{ url_for('assign_halls', exam_id=exam['exam_id']) }}" 
+                                           class="btn btn-{% if exam['assigned_halls'] and exam['assigned_halls'] > 0 %}info{% else %}warning{% endif %}" 
+                                           title="Assign Halls">
+                                            <i class="bi bi-building"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-journal-text" style="font-size: 3rem;"></i>
+                    <h4>No exams scheduled yet</h4>
+                    <p>Schedule your first exam using the form on the left.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Exam Requirements Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6>Mid Term</h6>
+                                <p class="mb-1"><strong>Duty Requirement:</strong> 2 duties</p>
+                                <p class="mb-0"><strong>Invigilators:</strong> Based on students</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6>Missed Evaluation</h6>
+                                <p class="mb-1"><strong>Duty Requirement:</strong> 2 duties</p>
+                                <p class="mb-0"><strong>Invigilators:</strong> Based on students</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6>End Sem</h6>
+                                <p class="mb-1"><strong>Duty Requirement:</strong> 1 duty</p>
+                                <p class="mb-0"><strong>Invigilators:</strong> Based on students</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6>Supplementary</h6>
+                                <p class="mb-1"><strong>Duty Requirement:</strong> 2 duties</p>
+                                <p class="mb-0"><strong>Invigilators:</strong> Based on students</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <strong>Note:</strong> Invigilators are automatically calculated based on student count and exam type.
+                        Hall allocation is based on student capacity - system will assign halls until capacity requirement is satisfied.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
